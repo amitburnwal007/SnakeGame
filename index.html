@@ -3,552 +3,320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game - Single and Two Player</title>
+    <title>Simple Snake Game</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f0f0f0;
+            justify-content: center;
+            height: 100vh;
             margin: 0;
-            padding: 20px;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
         }
-        .game-container {
+        
+        #game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
         }
-        .game-info {
-            display: flex;
-            justify-content: space-between;
-            width: 400px;
-            margin-bottom: 10px;
-        }
-        .score-display {
-            font-size: 20px;
-            font-weight: bold;
-        }
+        
         canvas {
-            background-color: #111;
+            background-color: #fff;
             border: 3px solid #333;
         }
-        .game-over {
-            position: absolute;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-        }
-        .button {
+        
+        #start-button {
             padding: 10px 20px;
-            font-size: 16px;
+            font-size: 18px;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin: 0 5px;
+            display: none;
         }
-        .button:hover {
+        
+        #start-button:hover {
             background-color: #45a049;
         }
-        .mode-selector {
-            margin-bottom: 15px;
-        }
-        .controls-info {
-            margin-top: 15px;
-            text-align: center;
-            color: #555;
-        }
-        .player-scores {
-            display: flex;
-            justify-content: space-between;
-            width: 400px;
-        }
-        .player-score {
+        
+        #score-display {
+            font-size: 24px;
             font-weight: bold;
-            font-size: 18px;
         }
-        .player1 {
-            color: #4CAF50;
-        }
-        .player2 {
-            color: #2196F3;
-        }
-        .winner-announcement {
-            font-size: 28px;
-            margin-bottom: 10px;
+        
+        #instructions {
+            max-width: 400px;
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
         }
     </style>
 </head>
 <body>
-    <h1>Snake Game</h1>
-    <div class="mode-selector">
-        <button id="singlePlayerBtn" class="button">Single Player</button>
-        <button id="twoPlayerBtn" class="button">Two Players</button>
-    </div>
-    <div class="game-container">
-        <div class="game-info">
-            <div id="singlePlayerScore" class="score-display">Score: <span id="score">0</span></div>
-            <div id="playerScores" class="player-scores" style="display: none;">
-                <div class="player-score player1">Player 1: <span id="player1Score">0</span></div>
-                <div class="player-score player2">Player 2: <span id="player2Score">0</span></div>
-            </div>
-            <button class="button" id="startButton">Start New Game</button>
-        </div>
-        <div style="position: relative;">
-            <canvas id="gameCanvas" width="400" height="400"></canvas>
-            <div id="gameOverMessage" class="game-over">
-                <div id="winnerText" class="winner-announcement"></div>
-                Final Score: <span id="finalScore">0</span><br><br>
-                Press "Start New Game" to play again
-            </div>
-        </div>
-        <div id="singlePlayerControls" class="controls-info">
-            Controls: Arrow Keys to move | Space Bar to start moving
-        </div>
-        <div id="twoPlayerControls" class="controls-info" style="display: none;">
-            <div>Player 1 (Green): Arrow Keys to move</div>
-            <div>Player 2 (Blue): WASD Keys to move</div>
-            <div>Space Bar to start the game</div>
+    <div id="game-container">
+        <div id="score-display">Score: 0</div>
+        <canvas id="game-canvas" width="400" height="400"></canvas>
+        <button id="start-button">Start New Game</button>
+        <div id="instructions">
+            Press SPACE to start the game<br>
+            Use ARROW KEYS to control the snake
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Canvas setup
-            const canvas = document.getElementById('gameCanvas');
-            const ctx = canvas.getContext('2d');
-            const scoreElement = document.getElementById('score');
-            const player1ScoreElement = document.getElementById('player1Score');
-            const player2ScoreElement = document.getElementById('player2Score');
-            const finalScoreElement = document.getElementById('finalScore');
-            const gameOverMessage = document.getElementById('gameOverMessage');
-            const startButton = document.getElementById('startButton');
-            const singlePlayerBtn = document.getElementById('singlePlayerBtn');
-            const twoPlayerBtn = document.getElementById('twoPlayerBtn');
-            const singlePlayerScore = document.getElementById('singlePlayerScore');
-            const playerScores = document.getElementById('playerScores');
-            const singlePlayerControls = document.getElementById('singlePlayerControls');
-            const twoPlayerControls = document.getElementById('twoPlayerControls');
-            const winnerText = document.getElementById('winnerText');
+        // Game canvas and context
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game elements
+        const gridSize = 20;
+        const gridWidth = canvas.width / gridSize;
+        const gridHeight = canvas.height / gridSize;
+        
+        // Game state variables
+        let snake = [];
+        let food = {};
+        let direction = '';
+        let nextDirection = '';
+        let score = 0;
+        let gameInterval = null;
+        let gameRunning = false;
+        let gameOver = false;
+        
+        // DOM Elements
+        const scoreDisplay = document.getElementById('score-display');
+        const startButton = document.getElementById('start-button');
+        const instructions = document.getElementById('instructions');
+        
+        // Initialize the game
+        function initGame() {
+            // Reset game state
+            snake = [
+                {x: Math.floor(gridWidth / 2), y: Math.floor(gridHeight / 2)}
+            ];
+            direction = '';
+            nextDirection = '';
+            score = 0;
+            gameRunning = false;
+            gameOver = false;
             
-            // Game constants
-            const GRID_SIZE = 20; // Size of each grid cell
-            const GRID_WIDTH = canvas.width / GRID_SIZE;
-            const GRID_HEIGHT = canvas.height / GRID_SIZE;
-            const GAME_SPEED = 150; // Milliseconds between moves (lower = faster)
+            // Update score display
+            scoreDisplay.textContent = `Score: ${score}`;
             
-            // Game variables
-            let snake1 = [];
-            let snake2 = [];
-            let food = {};
-            let direction1 = ''; // Empty means snake is not moving yet
-            let direction2 = '';
-            let nextDirection1 = '';
-            let nextDirection2 = '';
-            let gameRunning = false;
-            let gameLoop;
-            let score = 0;
-            let player1Score = 0;
-            let player2Score = 0;
-            let twoPlayerMode = false;
-            let gameOverReasons = [];
+            // Hide start button and show instructions
+            startButton.style.display = 'none';
+            instructions.style.display = 'block';
             
-            // Initialize game
-            function initGame() {
-                // Clear any existing game
-                clearInterval(gameLoop);
-                
-                // Hide game over message
-                gameOverMessage.style.display = 'none';
-                
-                // Reset variables
-                snake1 = [
-                    {x: Math.floor(GRID_WIDTH / 3), y: Math.floor(GRID_HEIGHT / 2)}
-                ];
-                
-                snake2 = [
-                    {x: Math.floor(GRID_WIDTH * 2/3), y: Math.floor(GRID_HEIGHT / 2)}
-                ];
-                
-                direction1 = ''; // Snake doesn't move until space is pressed
-                direction2 = '';
-                nextDirection1 = '';
-                nextDirection2 = '';
-                score = 0;
-                player1Score = 0;
-                player2Score = 0;
-                gameOverReasons = [];
-                
-                // Update score displays
-                scoreElement.textContent = score;
-                player1ScoreElement.textContent = player1Score;
-                player2ScoreElement.textContent = player2Score;
-                
-                // Create initial food
-                createFood();
-                
-                // Draw the initial state
-                draw();
-                
-                // Game is ready to start (waiting for space bar)
-                gameRunning = true;
+            // Generate initial food
+            generateFood();
+            
+            // Clear any existing interval
+            if (gameInterval) {
+                clearInterval(gameInterval);
+                gameInterval = null;
             }
             
-            // Create food at random position (not on snake)
-            function createFood() {
-                let foodPosition;
-                do {
-                    foodPosition = {
-                        x: Math.floor(Math.random() * GRID_WIDTH),
-                        y: Math.floor(Math.random() * GRID_HEIGHT)
-                    };
-                    // Check if position is occupied by either snake
-                    var positionOccupied = snake1.some(segment => 
-                        segment.x === foodPosition.x && segment.y === foodPosition.y
-                    );
-                    
-                    if (twoPlayerMode) {
-                        positionOccupied = positionOccupied || snake2.some(segment => 
-                            segment.x === foodPosition.x && segment.y === foodPosition.y
-                        );
-                    }
-                } while (positionOccupied);
-                
-                food = foodPosition;
+            // Draw initial state
+            draw();
+        }
+        
+        // Generate food at random position
+        function generateFood() {
+            // Keep generating until we find a position that's not occupied by the snake
+            let foodPosition;
+            
+            do {
+                foodPosition = {
+                    x: Math.floor(Math.random() * gridWidth),
+                    y: Math.floor(Math.random() * gridHeight)
+                };
+            } while (snake.some(segment => segment.x === foodPosition.x && segment.y === foodPosition.y));
+            
+            food = foodPosition;
+        }
+        
+        // Start the game
+        function startGame() {
+            if (gameRunning) return;
+            
+            // If no direction, choose a random one to start
+            if (!direction) {
+                const directions = ['up', 'right', 'down', 'left'];
+                direction = directions[Math.floor(Math.random() * directions.length)];
+                nextDirection = direction;
             }
             
-            // Main game loop
-            function gameUpdate() {
-                // If game is paused (no direction), don't update
-                if (!direction1 && (!twoPlayerMode || !direction2)) return;
-                
-                // Single player mode update
-                if (!twoPlayerMode) {
-                    updateSnake(snake1, direction1, nextDirection1, 1);
-                    nextDirection1 = '';
-                } 
-                // Two player mode update
-                else {
-                    if (direction1) {
-                        updateSnake(snake1, direction1, nextDirection1, 1);
-                        nextDirection1 = '';
-                    }
-                    
-                    if (direction2) {
-                        updateSnake(snake2, direction2, nextDirection2, 2);
-                        nextDirection2 = '';
-                    }
-                    
-                    // Check for collisions between snakes (only in two player mode)
-                    checkSnakeCollisions();
-                }
-                
-                // Check game over conditions
-                if (gameOverReasons.length > 0) {
-                    gameOver();
-                    return;
-                }
-                
-                // Update canvas
-                draw();
+            gameRunning = true;
+            gameOver = false;
+            instructions.style.display = 'none';
+            
+            // Start game loop
+            gameInterval = setInterval(update, 150);
+        }
+        
+        // Update game state
+        function update() {
+            if (gameOver) return;
+            
+            // Update direction
+            direction = nextDirection;
+            
+            // Calculate new head position
+            const head = {...snake[0]};
+            
+            switch (direction) {
+                case 'up':
+                    head.y--;
+                    break;
+                case 'right':
+                    head.x++;
+                    break;
+                case 'down':
+                    head.y++;
+                    break;
+                case 'left':
+                    head.x--;
+                    break;
             }
             
-            // Update a specific snake
-            function updateSnake(snake, direction, nextDirection, playerNum) {
-                // Apply the next direction if changed
-                if (nextDirection) {
-                    direction = nextDirection;
-                    if (playerNum === 1) direction1 = direction;
-                    else direction2 = direction;
-                }
+            // Check for collisions with walls
+            if (head.x < 0 || head.x >= gridWidth || head.y < 0 || head.y >= gridHeight) {
+                endGame();
+                return;
+            }
+            
+            // Check for collisions with self
+            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                endGame();
+                return;
+            }
+            
+            // Add new head to snake
+            snake.unshift(head);
+            
+            // Check if snake ate food
+            if (head.x === food.x && head.y === food.y) {
+                // Increase score
+                score += 10;
+                scoreDisplay.textContent = `Score: ${score}`;
                 
-                if (!direction) return; // Skip if this snake isn't moving yet
-                
-                // Calculate new head position based on direction
-                const head = {x: snake[0].x, y: snake[0].y};
-                switch (direction) {
-                    case 'up': head.y--; break;
-                    case 'down': head.y++; break;
-                    case 'left': head.x--; break;
-                    case 'right': head.x++; break;
-                }
-                
-                // Check for collision with walls
-                if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
-                    gameOverReasons.push(`Player ${playerNum} hit a wall`);
-                    return;
-                }
-                
-                // Check for collision with self
-                if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
-                    gameOverReasons.push(`Player ${playerNum} hit themselves`);
-                    return;
-                }
-                
-                // Add new head to start of snake array
-                snake.unshift(head);
-                
-                // Check for food collision
-                if (head.x === food.x && head.y === food.y) {
-                    // Increase score
-                    if (!twoPlayerMode) {
-                        score += 10;
-                        scoreElement.textContent = score;
-                    } else {
-                        if (playerNum === 1) {
-                            player1Score += 10;
-                            player1ScoreElement.textContent = player1Score;
-                        } else {
-                            player2Score += 10;
-                            player2ScoreElement.textContent = player2Score;
-                        }
-                    }
-                    
-                    // Create new food
-                    createFood();
+                // Generate new food
+                generateFood();
+            } else {
+                // Remove tail if no food was eaten
+                snake.pop();
+            }
+            
+            // Draw updated state
+            draw();
+        }
+        
+        // Draw game elements
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw snake
+            snake.forEach((segment, index) => {
+                // Head is darker green
+                if (index === 0) {
+                    ctx.fillStyle = '#006400';
                 } else {
-                    // Remove tail if no food eaten
-                    snake.pop();
-                }
-            }
-            
-            // Check for collisions between the two snakes
-            function checkSnakeCollisions() {
-                if (!twoPlayerMode || snake1.length === 0 || snake2.length === 0) return;
-                
-                // Check if snake1's head hit snake2's body
-                const head1 = snake1[0];
-                if (snake2.some((segment, index) => 
-                    head1.x === segment.x && head1.y === segment.y
-                )) {
-                    gameOverReasons.push("Player 1 hit Player 2");
+                    ctx.fillStyle = '#32CD32';
                 }
                 
-                // Check if snake2's head hit snake1's body
-                const head2 = snake2[0];
-                if (snake1.some((segment, index) => 
-                    head2.x === segment.x && head2.y === segment.y
-                )) {
-                    gameOverReasons.push("Player 2 hit Player 1");
-                }
-            }
-            
-            // Draw everything on the canvas
-            function draw() {
-                // Clear canvas
-                ctx.fillStyle = '#111';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
                 
-                // Draw snake 1
-                drawSnake(snake1, '#4CAF50', '#5CDF60', '#378C3B');
-                
-                // Draw snake 2 (only in two player mode)
-                if (twoPlayerMode) {
-                    drawSnake(snake2, '#2196F3', '#64B5F6', '#1976D2');
-                }
-                
-                // Draw food
-                ctx.fillStyle = '#FF5252'; // Red food
-                ctx.fillRect(
-                    food.x * GRID_SIZE, 
-                    food.y * GRID_SIZE, 
-                    GRID_SIZE, 
-                    GRID_SIZE
-                );
-                
-                // Add some visual interest to the food with a highlight
-                ctx.fillStyle = '#FF8A80';
-                ctx.fillRect(
-                    food.x * GRID_SIZE + GRID_SIZE/4, 
-                    food.y * GRID_SIZE + GRID_SIZE/4, 
-                    GRID_SIZE/4, 
-                    GRID_SIZE/4
-                );
-            }
-            
-            // Draw a specific snake
-            function drawSnake(snake, bodyColor, headColor, strokeColor) {
-                snake.forEach((segment, index) => {
-                    // Slightly lighter color for the head
-                    ctx.fillStyle = (index === 0) ? headColor : bodyColor;
-                    
-                    ctx.fillRect(
-                        segment.x * GRID_SIZE, 
-                        segment.y * GRID_SIZE, 
-                        GRID_SIZE, 
-                        GRID_SIZE
-                    );
-                    
-                    // Add a border to make segments more distinct
-                    ctx.strokeStyle = strokeColor;
-                    ctx.strokeRect(
-                        segment.x * GRID_SIZE, 
-                        segment.y * GRID_SIZE, 
-                        GRID_SIZE, 
-                        GRID_SIZE
-                    );
-                });
-            }
-            
-            // Handle game over
-            function gameOver() {
-                clearInterval(gameLoop);
-                gameRunning = false;
-                
-                // Set appropriate game over message
-                if (!twoPlayerMode) {
-                    winnerText.textContent = "Game Over!";
-                    finalScoreElement.textContent = score;
-                } else {
-                    // Determine winner
-                    if (gameOverReasons.includes("Player 1 hit Player 2") && 
-                        gameOverReasons.includes("Player 2 hit Player 1")) {
-                        // Both players collided with each other
-                        if (player1Score > player2Score) {
-                            winnerText.textContent = "Player 1 wins!";
-                        } else if (player2Score > player1Score) {
-                            winnerText.textContent = "Player 2 wins!";
-                        } else {
-                            winnerText.textContent = "It's a tie!";
-                        }
-                    } else if (gameOverReasons.includes("Player 1 hit Player 2") || 
-                              gameOverReasons.includes("Player 1 hit a wall") || 
-                              gameOverReasons.includes("Player 1 hit themselves")) {
-                        winnerText.textContent = "Player 2 wins!";
-                    } else {
-                        winnerText.textContent = "Player 1 wins!";
-                    }
-                    
-                    finalScoreElement.textContent = player1Score + " - " + player2Score;
-                }
-                
-                gameOverMessage.style.display = 'block';
-            }
-            
-            // Get a random starting direction
-            function getRandomDirection() {
-                const directions = ['up', 'down', 'left', 'right'];
-                return directions[Math.floor(Math.random() * directions.length)];
-            }
-            
-            // Switch to single player mode
-            function switchToSinglePlayer() {
-                twoPlayerMode = false;
-                singlePlayerScore.style.display = "block";
-                playerScores.style.display = "none";
-                singlePlayerControls.style.display = "block";
-                twoPlayerControls.style.display = "none";
-                singlePlayerBtn.style.backgroundColor = "#45a049";
-                twoPlayerBtn.style.backgroundColor = "#4CAF50";
-                initGame();
-            }
-            
-            // Switch to two player mode
-            function switchToTwoPlayer() {
-                twoPlayerMode = true;
-                singlePlayerScore.style.display = "none";
-                playerScores.style.display = "flex";
-                singlePlayerControls.style.display = "none";
-                twoPlayerControls.style.display = "block";
-                singlePlayerBtn.style.backgroundColor = "#4CAF50";
-                twoPlayerBtn.style.backgroundColor = "#45a049";
-                initGame();
-            }
-            
-            // Event listeners
-            document.addEventListener('keydown', (event) => {
-                if (!gameRunning) return;
-                
-                // Start the game when space is pressed (if not already moving)
-                if (event.code === 'Space') {
-                    if (!direction1) {
-                        direction1 = getRandomDirection();
-                    }
-                    
-                    if (twoPlayerMode && !direction2) {
-                        // Make sure P2 doesn't get same initial direction as P1
-                        let dir;
-                        do {
-                            dir = getRandomDirection();
-                        } while (dir === direction1);
-                        direction2 = dir;
-                    }
-                    
-                    if (!gameLoop) {
-                        gameLoop = setInterval(gameUpdate, GAME_SPEED);
-                    }
-                    return;
-                }
-                
-                // Handle directional input for Player 1 (arrow keys)
-                switch (event.key) {
-                    case 'ArrowUp':
-                        if (direction1 !== 'down') {
-                            nextDirection1 = 'up';
-                        }
-                        break;
-                    case 'ArrowDown':
-                        if (direction1 !== 'up') {
-                            nextDirection1 = 'down';
-                        }
-                        break;
-                    case 'ArrowLeft':
-                        if (direction1 !== 'right') {
-                            nextDirection1 = 'left';
-                        }
-                        break;
-                    case 'ArrowRight':
-                        if (direction1 !== 'left') {
-                            nextDirection1 = 'right';
-                        }
-                        break;
-                }
-                
-                // Handle directional input for Player 2 (WASD keys) - only in two player mode
-                if (twoPlayerMode) {
-                    switch (event.key.toLowerCase()) {
-                        case 'w':
-                            if (direction2 !== 'down') {
-                                nextDirection2 = 'up';
-                            }
-                            break;
-                        case 's':
-                            if (direction2 !== 'up') {
-                                nextDirection2 = 'down';
-                            }
-                            break;
-                        case 'a':
-                            if (direction2 !== 'right') {
-                                nextDirection2 = 'left';
-                            }
-                            break;
-                        case 'd':
-                            if (direction2 !== 'left') {
-                                nextDirection2 = 'right';
-                            }
-                            break;
-                    }
-                }
+                // Draw a border around each segment
+                ctx.strokeStyle = '#004d00';
+                ctx.strokeRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
             });
             
-            // Start button event listener
-            startButton.addEventListener('click', initGame);
+            // Draw food
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            const centerX = food.x * gridSize + gridSize / 2;
+            const centerY = food.y * gridSize + gridSize / 2;
+            const radius = gridSize / 2 * 0.8; // Slightly smaller than half a grid cell
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
             
-            // Mode selection buttons
-            singlePlayerBtn.addEventListener('click', switchToSinglePlayer);
-            twoPlayerBtn.addEventListener('click', switchToTwoPlayer);
+            // Draw game over message if game is over
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
+            }
+        }
+        
+        // End the game
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
             
-            // Initialize the game when the page loads
-            switchToSinglePlayer(); // Start in single player mode by default
+            if (gameInterval) {
+                clearInterval(gameInterval);
+                gameInterval = null;
+            }
+            
+            // Show start button
+            startButton.style.display = 'block';
+            startButton.textContent = 'Start New Game';
+            
+            // Draw game over state
+            draw();
+        }
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', (e) => {
+            // Space to start game
+            if (e.code === 'Space' && !gameRunning && !gameOver) {
+                startGame();
+                e.preventDefault();
+                return;
+            }
+            
+            // Only handle direction changes if game is running
+            if (!gameRunning) return;
+            
+            // Prevent opposite direction (can't go backwards into yourself)
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (direction !== 'down') nextDirection = 'up';
+                    break;
+                case 'ArrowRight':
+                    if (direction !== 'left') nextDirection = 'right';
+                    break;
+                case 'ArrowDown':
+                    if (direction !== 'up') nextDirection = 'down';
+                    break;
+                case 'ArrowLeft':
+                    if (direction !== 'right') nextDirection = 'left';
+                    break;
+            }
+            
+            // Prevent page scrolling when using arrow keys
+            if (['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'Space'].includes(e.key)) {
+                e.preventDefault();
+            }
         });
+        
+        // Handle start button clicks
+        startButton.addEventListener('click', () => {
+            initGame();
+            startGame();
+        });
+        
+        // Initialize the game on load
+        initGame();
     </script>
 </body>
 </html>

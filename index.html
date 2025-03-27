@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Snake Game</title>
+    <title>Snake Game with Speed Control</title>
     <style>
         body {
             display: flex;
@@ -12,8 +12,9 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            background-color: #c1c1c1;
             font-family: Arial, sans-serif;
+            perspective: 1000px;
         }
         
         #game-container {
@@ -21,11 +22,55 @@
             flex-direction: column;
             align-items: center;
             gap: 20px;
+            background-color: #4a4a4a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2), 
+                        inset 0 0 15px rgba(255,255,255,0.1);
+            transform: rotateX(10deg);
+            border: 8px solid #2a2a2a;
         }
         
         canvas {
-            background-color: #fff;
+            background-color: #90EE90;
             border: 3px solid #333;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        #game-screen-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotateX(10deg);
+            width: 440px;
+            height: 540px;
+            background-color: #2a2a2a;
+            border-radius: 20px;
+            z-index: -1;
+            box-shadow: 
+                0 20px 50px rgba(0,0,0,0.5),
+                inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        #device-buttons-left, #device-buttons-right {
+            position: absolute;
+            background-color: #1a1a1a;
+            width: 10px;
+            border-radius: 3px;
+        }
+        
+        #device-buttons-left {
+            left: 15px;
+            top: 50%;
+            height: 50px;
+            transform: translateY(-50%);
+        }
+        
+        #device-buttons-right {
+            right: 15px;
+            top: 50%;
+            height: 80px;
+            transform: translateY(-50%);
         }
         
         #start-button {
@@ -54,12 +99,37 @@
             margin-top: 20px;
             color: #666;
         }
+        
+        #speed-control-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        #speed-slider {
+            width: 200px;
+        }
+        
+        #speed-value {
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
+    <div id="game-screen-frame"></div>
+    <div id="device-buttons-left"></div>
+    <div id="device-buttons-right"></div>
     <div id="game-container">
         <div id="score-display">Score: 0</div>
         <canvas id="game-canvas" width="400" height="400"></canvas>
+        <div id="speed-control-container">
+            <label for="speed-slider">Game Speed:</label>
+            <input type="range" id="speed-slider" min="50" max="300" value="150" step="25">
+            <span id="speed-value">Normal</span>
+        </div>
         <button id="start-button">Start New Game</button>
         <div id="instructions">
             Press SPACE to start the game<br>
@@ -86,11 +156,41 @@
         let gameInterval = null;
         let gameRunning = false;
         let gameOver = false;
+        let gameSpeed = 150; // Default speed
         
         // DOM Elements
         const scoreDisplay = document.getElementById('score-display');
         const startButton = document.getElementById('start-button');
         const instructions = document.getElementById('instructions');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        
+        // Map speed values to descriptive labels
+        const speedLabels = {
+            50: 'Very Fast',
+            75: 'Fast',
+            100: 'Quick',
+            125: 'Medium-Fast',
+            150: 'Normal',
+            175: 'Medium-Slow',
+            200: 'Slow',
+            250: 'Very Slow',
+            300: 'Extremely Slow'
+        };
+        
+        // Speed slider event listener
+        speedSlider.addEventListener('input', () => {
+            gameSpeed = parseInt(speedSlider.value);
+            
+            // Update speed label
+            speedValue.textContent = speedLabels[gameSpeed] || 'Custom';
+            
+            // If game is running, restart interval with new speed
+            if (gameRunning) {
+                clearInterval(gameInterval);
+                gameInterval = setInterval(update, gameSpeed);
+            }
+        });
         
         // Initialize the game
         function initGame() {
@@ -154,8 +254,8 @@
             gameOver = false;
             instructions.style.display = 'none';
             
-            // Start game loop
-            gameInterval = setInterval(update, 150);
+            // Start game loop with current speed
+            gameInterval = setInterval(update, gameSpeed);
         }
         
         // Update game state
@@ -277,9 +377,14 @@
         
         // Handle keyboard input
         document.addEventListener('keydown', (e) => {
-            // Space to start game
-            if (e.code === 'Space' && !gameRunning && !gameOver) {
-                startGame();
+            // Space to start game or restart when game is over
+            if (e.code === 'Space') {
+                if (!gameRunning && !gameOver) {
+                    startGame();
+                } else if (gameOver) {
+                    initGame();
+                    startGame();
+                }
                 e.preventDefault();
                 return;
             }
